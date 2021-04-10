@@ -1,1 +1,1 @@
-"Enjoy my notes!" 
+Enjoy my notes!
