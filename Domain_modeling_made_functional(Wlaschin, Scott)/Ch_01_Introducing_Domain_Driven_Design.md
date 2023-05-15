@@ -22,11 +22,10 @@ The DDD aproach:
 Domain experts, the development team, other stakeholders, and the source code itself all share the same model.
 No translation from the domain expert’s requirements to the code; the code is designed to reflect the shared mental model directly.
 
-Benefits
-
-• Faster time to market.
-• Less waste. 
-• Easier maintenance and evolution. 
+Benefits:
+- Faster time to market.
+- Less waste. 
+- Easier maintenance and evolution. 
 
 ## Understanding the Domain Through Business Events
 
@@ -67,13 +66,13 @@ the exact steps that an employee (or software component) needs to do to
 accomplish a business goal or subgoal.
 
 ### Documenting Commands
-Identifying what tries to/makes the events happen - commands 
-if a command succeeds, it will initiate a workflow resulting an a corresponding Domain Event(s)
+Identifying what tries to/makes the events happen - commands.
+if a command succeeds, it will initiate a workflow resulting an a corresponding Domain Event(s).
 
 Command: “Place an order”; Domain Event: “Order placed.”
 
 An event triggers a command, which initiates some business workflow. The output of the workflow is some more events. Those events may then trigger new commands.
-Not all events are associated with a command. Some events might be triggered by a scheduler or monitoring system
+Not all events are associated with a command; events can also be triggered by, say, a scheduler or monitoring system.
 
 ## Partitioning the Domain into Subdomains
 Second guideline: “Partition the problem domain into smaller subdomains.”
@@ -81,8 +80,7 @@ A business has separate departments for the various aspects of a process - i.e. 
 Each of these areas corresponds to a domain. 
 Sub-domains: Within a domain might be areas that are distinctive as well. 
 
-When partitioning a domain into smaller parts we must be careful: it’s tempting to want clear, crisp boundaries, but the real
-world is fuzzy, e.g. there's some overlap between order-taking, shipping and billing. Someone in one of these departments must know a little about how the others work. 
+When partitioning a domain into smaller parts we must be careful not to create to clear boundaries; the real world is fuzzy, e.g. there's some overlap between order-taking, shipping and billing. Someone in one of these departments must know a little about how the others work. 
 
 ## Creating a Solution Using Bounded Contexts
 
@@ -101,8 +99,9 @@ When we implement the model, a bounded context will correspond exactly to some k
 
 ### Getting the Contexts Right
 
-one of the most important challenges of a domain-driven design is to get context boundaries right
-Not an exact science - guidelines:
+One of the most critical challenges of a domain-driven design is to determine the right context boundaries.
+
+Not an exact science - Guidelines:
 - Listen to the domain experts.
 - Pay attention to existing team and department boundaries.
 - Focus on the “bounded” part of a bounded context - be aware of scope creep
@@ -119,14 +118,14 @@ Some domains are more important than others. These are the core domains — prov
 Others are required, but not core - *supportive* domains. 
 Or *Generic* domains, if they are not unique to the business.
 
-p.21 for discussion 
+p.21 for discussion.
 
 Important to prioritize and not to attempt to implement all bounded contexts at the same time;
-Focus on bounded contexts that add the most value, and expand from there.
+Focus on bounded contexts that add the most value and expand from there.
 
 ### Creating a Ubiquitous Language
-Ubiquitous Language - The set of concepts and vocabulary that is shared between everyone on the team
-defines the shared mental model for the business domain.
+Ubiquitous Language - The set of concepts and vocabulary that is shared between everyone on the team.
+Defines the shared mental model for the business domain.
 Should be used everywhere in the project.
 Defined by collaboration between everyone on the team.
 Always a work in progress; as the design evolves, new terms and concepts are discovered.
@@ -137,8 +136,7 @@ Each context will have a “dialect” of the Ubiquitous Language, and a word ca
 ## Summarizing the Concepts of Domain-Driven Design
 *Domain* - area of knowledge associated with the problem we are trying to solve, or which a “domain expert” is expert in
 
-*Domain Model* - a set of simplifications that represent the aspects of a domain that are relevant to a particular problem. The domain model is part of the solution space, while the domain that it represents is part of
-the problem space.
+*Domain Model* - a set of simplifications that represent the aspects of a domain that are relevant to a particular problem. The domain model is part of the solution space, while the domain that it represents is part of the problem space.
 
 *Ubiquitous Language* - a set of concepts and vocabulary that is associated with the domain; shared by both team members and source code
 
