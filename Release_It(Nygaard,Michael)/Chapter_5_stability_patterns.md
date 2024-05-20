@@ -1,12 +1,16 @@
 # Chapter 5 - Stability patterns
 Expect failures
+
 Patterns provide architecture/design guidance to reduce/eliminate/mitigate the effects of cracks in the system
 
 
 ## Timeouts 
 Networks are faulty - Responses are not guaranteed to arrive
+
 The default wait is infinite - timeouts allow you to stop waiting eventually
+
 Provides fault isolation and protects you from problems another service.
+
 Apply to a general class of problems - help systems recover from unanticipated events.
 
 Can be useful within a single service too
@@ -21,6 +25,7 @@ Beware of
 Language runtimes that use callbacks or reactive programming styles let you specify timeouts easily.
 
 Handle pervasive timeouts by structuring long-running operations into a set of re-usable primitives. 
+
 E. g. a typical db call can hang in multiple places 
 - check out a database connection from a resource pool
 - run a query
@@ -30,10 +35,13 @@ E. g. a typical db call can hang in multiple places
 To avoid duplicate error/timeout handling code each place this happens
 - use a *generic gateway* to provide the template for connection handling, error handling, query execution, and result processing
 - use a *query object* to represent the variable part
+
 Calling code can then provide the essential logic.
+
 Having this in a single class also makes it easier to apply Circuit Breaker pattern.
 
 Often used with retries - if an operation times out, the software tries again. 
+
 Should have some delay - fast retries are likely to fail again
 - If the operation failed because of a significant problem, it’s likely to immediately fail again 
 - Certain transient failures might be overcome with a retry (e.g., dropped packets over a WAN) 
@@ -41,6 +49,7 @@ Should have some delay - fast retries are likely to fail again
 - Problems on the network, or with other servers, tend to last for a while
 
 Retrying an operation can increase your response time past the client's timeout and unnecessarily tie up its resources. 
+
 If you cannot complete an operation because of a timeout, *you should return a result immediately to the waiting client*
 - a failure
 - a success
@@ -53,6 +62,7 @@ Queuing the work for a slow retry later makes a system more robust.
 Mail server example 
 
 How fast is fast enough? It depends on your application and your users. 
+
 For a service behind a web API, “fast enough” is probably between 10 and 100 milliseconds. Beyond that, you’ll start to lose capacity and customers.
 
 Synergy with circuit breakers: A circuit breaker can be tripped to the “off” state if too many timeouts occur.
@@ -65,15 +75,17 @@ Timeout and Fail Fast both address latency problems.
 
 Aids with unbounded result sets by preventing the client from processing the entire result set, but there's better solutions - timeouts are only a stopgap.
  
-
-
 ## Circuit breaker
 Allows a subsystem to fail without breaking the entire system. 
+
 Once the subsystem is good again, the circuit breaker can be reset to restore full function to the system.
+
 Differs from retries:  exist to prevent operations, not reexecute them.
 
 Circumvents calls when the system is not healthy.
+
 State machine: Closed, open and half-open states. 
+
 In the normal “closed” state, the circuit breaker executes operations as usual (calls to another system/internal operations that are subject to timeout or other execution failure).
 - If the call succeeds, nothing extraordinary happens 
 - If it fails, however, the circuit breaker registers the failure
@@ -85,6 +97,7 @@ When the absolute number/frequency of failure exceeds a threshold, the circuit b
 -- Else it returns to the open state until another timeout elapses
 
 May be configured to track different types of failures separately. 
+
 E.g. setting a lower threshold for “timeout calling remote system” failures than “connection refused” errors.
 
 When in open state, incoming calls must be handled. 
@@ -96,6 +109,7 @@ When in open state, incoming calls must be handled.
 - call a secondary service when the primary is not available
 
 A way to *automatically degrade functionality when the system is under stress*. 
+
 Every fallback strategy can impact the business of the system. 
 -- Essential to involve the system’s stakeholders when deciding how to handle calls made when the circuit is open.
 -- should a retail system accept an order if it can’t confirm availability of the customer’s items?
@@ -103,27 +117,41 @@ Every fallback strategy can impact the business of the system.
 
 
 Implementation details to consider: 
+
 What constitutes “too many failures”? 
+
 Just adding up all the faults isn’t useful, i.e. five faults over five hours vs. in the last thirty seconds. 
+
 Use fault *density* instead. 
 
 Leaky Bucket pattern: 
+
 Counter incremented every time there's a fault. 
+
 A background thread/timer decrements the counter periodically (if greater than zero).
+
 If the count exceeds a threshold, faults must be frequent.
 
 The state of the circuit breakers in a system is important to operations. 
+
 *State changes should be logged, and the current state should be exposed for querying and monitoring.* 
+
 The frequency of state changes is a useful metric to chart over time; leading indicator of problems elsewhere in the enterprise. 
 
 *Operations should have a way to directly trip or reset the circuit breaker.* 
+
 The circuit breaker is a convenient place to gather metrics about call volumes and response times.
 
 A circuit breaker should be built at the scope of a single process. I.e. a breaker state affects every thread in a process, but is not shared across multiple processes. 
+
 Results in some loss of efficiency when multiple instances of the caller each independently discover that the provider is down. 
+
 Using a shared state would introduce another out of-process communication and thus a new failure mode.
+
 Even when just shared within a process, circuit breakers face all the multithreaded programming terrors. 
+
 Be sure to avoid accidentally single-threading all calls to a remote system! 
+
 Better to use an existing library. 
 
 *Effective at guarding against integration points, cascading failures, unbalanced capacities, and slow responses.* 
@@ -133,16 +161,21 @@ Work so closely with timeouts that they often track timeout failures separately 
 ## Bulkhead
 
 Bulkheads are used in ships to contain damage; ship is partitioned into separate, watertight compartments that prevents water from moving from one section to another.
- By partitioning your systems, you can keep a failure in one part of the system from destroying everything. 
+
+By partitioning your systems, you can keep a failure in one part of the system from destroying everything. 
+
 Typically in the form of redundancy. 
+
 Examples
 - In a group of independent servers, hardware failure in one does not affect the others  
 - When multiple application instances run on a server and one crashes, the others will still be running 
 
 *Redundant VMs* are not as robust as redundant physical machines. 
+
 Most VM provisioning tools do not allow you to enforce physical isolation, so more than one VM may end up running on the same physical box.
 
 Largest scale: a mission-critical service can be implemented as several independent farms of servers, with certain farms reserved for use by critical applications and others available for noncritical uses.
+
 E.g. a ticketing system could provide dedicated servers for customer check-in. These would not be affected if other, shared servers are overwhelmed with “flight status” queries. 
 
 Cloud: you should run instances in different divisions of the service (e.g., across zones and regions in AWS) - very large-grained chunks with strong partitioning between them.
@@ -150,38 +183,56 @@ Cloud: you should run instances in different divisions of the service (e.g., acr
 Functions as a service: basically every function invocation runs in its own compartment.
 
 Hidden coupling through common downstream service:
+
 Services Foo and Bar both use the service Baz.
+
 Makes each system vulnerable to the other.
+
 If Foo gets crushed under user load, goes rogue because of some defect, or triggers a bug in Baz, Bar will also suffer. 
 
+
 The coupling makes diagnosing problems (particularly performance-related) in Bar very difficult. 
+
 Baz maintenance windows must be coordinated with both Foo and Bar.
 
 Assuming Foo/Bar are critical systems with strict SLAs, it’d be safer to partition Baz into two pools.
+
 Dedicating some capacity to each critical client removes most of the hidden linkage (they would likely still share a database and therefore subject to deadlocks across instances).
 
 It would be better to preserve all capabilities. 
+
 Assuming that failures will occur, you must consider how to minimize the damage caused by a failure. 
+
 Hard to do and one rule cannot apply in every case - you must examine the impact to the business of each loss of capability and cross-reference impacts against the architecture of the systems. 
+
 *The goal is to identify the natural boundaries that let you partition the system in a way that is both technically feasible and financially beneficial.*
+
 Boundaries of this partitioning may be aligned with the callers, with functionality, or with the topology of the system.
 
+
 With cloud-based systems and software-defined load balancers, bulkheads do not need to be permanent.
+
 Using automation a cluster of VMs can be carved out and the load balancer can direct traffic from a particular consumer to that cluster.
 - Similar to A/B testing, but a protective measure rather than an experiment
 - Dynamic partitions can be made and destroyed as traffic patterns change
 
+
 At smaller scale, *process binding* is an example of partitioning via bulkheads.
+
 Binding a process to a core or group of cores ensures that the OS schedules that process’s threads only on the designated core or cores.
+
 Regarded as a performance tweak - reduces the cache bashing that happens when processes migrate from one core to another
 - If a process goes crazy and starts using all CPU cycles, it can drag down an entire host machine 
 - If bound and thus limited to a single core, it can only use all available cycles on that one
 
 You can partition the threads inside a single process, with separate thread groups dedicated to different functions. 
+
 E.g. it’s often helpful to reserve a pool of request-handling threads for administrative use.
+
 That way, even if all request-handling threads on the application server are hung, it can still respond to admin requests, e.g. to collect data for postmortem analysis or a request to shut down.
  
 *Bulkheads are effective at maintaining service, or partial service, even in the face of failures.* 
+
 Especially useful in SOA, where the loss of a single service could have repercussions throughout the enterprise. 
 
 #### Remember This
@@ -199,14 +250,20 @@ Consider Bulkheads particularly with shared services models
 ## Steady State
  
 Keep people off production systems to the greatest extent possible.
+
 Whenever a human touches a server is an opportunity for unforced errors.
+
 Servers shouldnt be treated  as “pets” rather than “cattle”, inevitably leads to fiddling. 
 
 The system should be able to run at least one release cycle without human intervention. 
+
 The logical extreme on the “no fiddling” scale is immutable infrastructure. 
 
+
 “One release cycle” may be tough if the system is deployed once a quarter.
+
 But a microservice being continuously deployed from version control should be easy to stabilize for a release cycle.
+
 Unless the system is crashing every day, the most common reason for log-ins will probably be cleaning up log files or purging data.
 
 Any mechanism that accumulates resources 
@@ -214,7 +271,8 @@ Any mechanism that accumulates resources
 - rows in the database
 - caches in memory
 
-is like a bucket that fills up at a certain rate, based on the accumulation of data.
+Like a bucket that fills up at a certain rate, based on the accumulation of data.
+
 Must be drained too or it will eventually overflow:
 - servers go down
 - databases get slow or throw errors
@@ -224,27 +282,40 @@ The Steady State pattern says that *for every mechanism that accumulates a resou
 
 #### Data Purging
 Computing resources are always finite; therefore, you cannot continually increase consumption without limit. 
+
 Often overlooked issue in new software.
-Some day your little database will grow up.  
+
+Your initially small database will accumulate data over time.
+
 In the worst case, it’ll start undermining the whole system. 
+
 The most obvious symptom of data growth will be steadily increasing I/O rates on the database servers. 
+
 You may also see increasing latency at constant loads.
+
 Data purging is nasty, detail-oriented work.
+
 Referential integrity constraints in a relational database help a lot. 
 - Difficult to cleanly remove obsolete data without leaving orphaned rows. 
 Important to ensure that applications still work once the data is gone - takes coding and testing.
 
-General rules (depends on database/ sed):
+General rules (depends on database/libraries used):
 RDBMS plus ORM tends to deal badly with dangling references, for example, whereas a document-oriented database won’t even notice.
+
 As a consequence, data purging always gets left until after the first release is out. 
+
 The rationale is, “We’ve got six months after launch to implement purging.” 
+
 After launch, there are always emergency releases to fix critical defects or add “must-have” features from marketers tired of waiting for the software to be done. 
+
 The first six months can slip away pretty quickly, but when that first release launches, a fuse is lit.
 
 #### Log Files
 
 Left unchecked log files on individual machines will eventually fill up their containing filesystem. 
+
 Whether that’s a volume set aside for logs, the root disk, or the application installation directory, it means trouble. 
+
 Jeopardizes stability due to the negative effects that can occur when the filesystem is full.
 
 UNIX
@@ -256,8 +327,11 @@ Windows
 - an application can always use the very last byte 
 
 For both, the OS will report errors back to the application.
+
 In the best-case scenario, the logging filesystem is separate from any critical data storage (such as transactions), and the application code protects itself enough that users never realize anything is amiss. 
+
 Less ideal, but still tolerable, is a nicely worded error message asking the users to have patience and try again later. 
+
 
 It’s better to avoid filling up the filesystem in the first place
 - Log file rotation requires minimal configuration 
@@ -268,7 +342,9 @@ It’s better to avoid filling up the filesystem in the first place
 Make sure that all log files will get rotated out and eventually purged, though, or you’ll eventually spend time fixing the tool that’s supposed to help you fix the system.
 
 Log files on production systems have a terrible signal-to-noise ratio. 
+
 Best to get them off the individual hosts as quickly as possible and to a centralized logging server, such as Logstash, where they can be indexed, searched, and monitored.
+
 
 Sometimes logs needs to be stored for long (e.g. financial systems due to Sarbanes–Oxley Act of 2002): 
 - Get logs off of production machines as quickly as possible
@@ -276,18 +352,24 @@ Sometimes logs needs to be stored for long (e.g. financial systems due to Sarban
 
 #### In-Memory Caching
 A untended cache can quickly use up all of a server's memory. 
+
 Low memory conditions are a threat to both stability and capacity. 
+
 
 When building a cache, consider
 - Is the space of keys finite or infinite?
 - Does the cached items change?
 
 If infinite keys, a cache size limits must be enforced and the cache needs some form of cache invalidation. 
+
 The simplest mechanism is a *time-based cache flush*. 
+
 Alternatively *least recently used (LRU)* or *working-set algorithms*.
 
 Improper use of caching is the major cause of memory leaks, leading to daily server restarts and thus production server fiddling.
+
 Sludge buildup is a major cause of slow responses - Steady State helps avoid that antipattern. 
+
 Steady State encourages better operational discipline by limiting the need for system administrators to log on to the production servers.
 
 
@@ -499,7 +581,7 @@ Consider health checks.
 
 Build handshaking into your own low-level protocols so that the endpoints can each inform the other when they are not ready to accept work.
 
-#### Test Harnesses
+## Test Harnesses
 Distributed systems have failure modes that are difficult to trigger in development/QA environments. 
 To test various components together, an “integration testing” environment is often used where the system is fully integrated to all the other systems it interacts with.
 
